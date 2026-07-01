@@ -1,0 +1,20 @@
+[
+    {
+        "query": "Aimee Montoya",
+        "ground_truth": [
+            "employee_0002.md"
+        ]
+    },
+    {
+        "query": "What should I do for application slow performance?",
+        "relevant_docs": [3, 4]
+    },
+    {
+        "query": "How do I handle a credential stuffing attack?",
+        "relevant_docs": [5, 6]
+    },
+    {
+        "query": "What is the escalation path for Despite Manager?",
+        "relevant_docs": [7, 8]
+    }
+]
