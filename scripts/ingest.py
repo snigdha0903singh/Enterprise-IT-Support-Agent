@@ -73,7 +73,9 @@ def main() -> None:
     print(f"   Embedded {len(embedded_documents)} chunks")
 
     print("5. Storing vectors in Qdrant...")
+    
     client = get_qdrant_client(url=args.qdrant_url, path=None if args.qdrant_url else args.qdrant_path)
+    print(f"   Using Qdrant client {client}")
     build_vectorstore(
         embedded_documents,
         collection_name=args.collection,

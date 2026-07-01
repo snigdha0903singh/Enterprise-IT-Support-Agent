@@ -77,6 +77,42 @@ def build_policy_metadata(document: Document) -> dict:
     }
 
 
+def build_system_metadata(document: Document) -> dict:
+    content = document.page_content
+
+    return {
+        "doc_type": "system",
+        "system_id": _extract_field(content, "System ID"),
+        "system_name": _extract_heading_value(content, "System Documentation"),
+        "category": _extract_field(content, "Category"),
+        "status": _extract_field(content, "Status"),
+        "source": _source(document),
+    }
+
+
+def build_knowledge_base_metadata(document: Document) -> dict:
+    content = document.page_content
+
+    return {
+        "doc_type": "knowledge_base",
+        "article_id": _extract_field(content, "Article ID"),
+        "article_name": _extract_heading_value(content, "Knowledge Base"),
+        "related_system": _extract_field(content, "Related System"),
+        "source": _source(document),
+    }
+
+
+def build_incident_guide_metadata(document: Document) -> dict:
+    content = document.page_content
+
+    return {
+        "doc_type": "incident_guide",
+        "guide_id": _extract_field(content, "Guide ID"),
+        "guide_name": _extract_heading_value(content, "Incident Response Guide"),
+        "source": _source(document),
+    }
+
+
 def build_metadata(document: Document) -> dict:
     source = _source(document) or ""
 
@@ -86,6 +122,12 @@ def build_metadata(document: Document) -> dict:
         return build_project_metadata(document)
     if source.startswith(("policy_", "security_")):
         return build_policy_metadata(document)
+    if source.startswith("system_"):
+        return build_system_metadata(document)
+    if source.startswith("kb_"):
+        return build_knowledge_base_metadata(document)
+    if source.startswith("incident_"):
+        return build_incident_guide_metadata(document)
 
     return {
         "doc_type": "unknown",

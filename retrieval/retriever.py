@@ -11,6 +11,7 @@ from ingestion.embed_documents import DEFAULT_EMBEDDING_MODEL
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_QDRANT_PATH = REPO_ROOT / "vectorstore" / "qdrant"
+BGE_QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
 
 
 def get_embeddings() -> HuggingFaceEmbeddings:
@@ -40,14 +41,17 @@ class SimpleQdrantRetriever:
         embeddings: HuggingFaceEmbeddings,
         collection_name: str = COLLECTION_NAME,
         k: int = 5,
+        query_instruction: str = BGE_QUERY_INSTRUCTION,
     ) -> None:
         self.client = client
         self.embeddings = embeddings
         self.collection_name = collection_name
         self.k = k
+        self.query_instruction = query_instruction
 
     def invoke(self, query: str) -> list[Document]:
-        query_vector = self.embeddings.embed_query(query)
+        embedded_query = f"{self.query_instruction}{query}" if self.query_instruction else query
+        query_vector = self.embeddings.embed_query(embedded_query)
         results = self.client.query_points(
             collection_name=self.collection_name,
             query=query_vector,
@@ -80,8 +84,12 @@ def get_retriever(
     url: str | None = None,
     path: str | Path | None = DEFAULT_QDRANT_PATH,
 ):
+    qdrant_client = get_qdrant_client(url=url, path=path)
+    count = qdrant_client.count(collection_name=collection_name, exact=True)
+    print(f"Qdrant collection '{collection_name}' contains {count.count} points")
+
     return SimpleQdrantRetriever(
-        client=get_qdrant_client(url=url, path=path),
+        client=qdrant_client,
         embeddings=get_embeddings(),
         collection_name=collection_name,
         k=k,

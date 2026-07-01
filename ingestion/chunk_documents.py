@@ -9,8 +9,8 @@ except ImportError:
     from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 
-DEFAULT_CHUNK_SIZE = 800
-DEFAULT_CHUNK_OVERLAP = 100
+DEFAULT_CHUNK_SIZE = 1200
+DEFAULT_CHUNK_OVERLAP = 300
 
 
 def chunk_documents(
