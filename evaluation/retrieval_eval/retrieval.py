@@ -50,6 +50,15 @@ class Evaluators:
         recall_at_5 = len(retrieved_relevant_docs) / len(relevant_docs)
         return recall_at_5
 
+    def get_recall_at_1_score(self, retrieved_docs: list, relevant_docs: list):
+        if not relevant_docs:
+            return 0.0
+
+        top_1_docs = retrieved_docs[:1]
+        retrieved_relevant_docs = [doc for doc in top_1_docs if doc in relevant_docs]
+        recall_at_1 = len(retrieved_relevant_docs) / len(relevant_docs)
+        return recall_at_1
+
     def get_recall_percentage(self):
         recall_score = 0
         for item in self.data:
@@ -62,6 +71,21 @@ class Evaluators:
             print(f"Relevant Docs: {relevant_docs}")
             print(f"Retrieved Docs: {retrieved_docs}")
             print(f"Recall@5: {recall_at_5:.2f}\n")
+        recall_percentage = recall_score / len(self.data) * 100
+        return recall_percentage
+
+    def get_recall_at_1_percentage(self):
+        recall_score = 0
+        for item in self.data:
+            query = item["query"]
+            relevant_docs = self.get_relevant_docs(item)
+            retrieved_docs = self.get_unique_retrieved_doc_list(query)
+            recall_at_1 = self.get_recall_at_1_score(retrieved_docs, relevant_docs)
+            recall_score += recall_at_1
+            print(f"Query: {query}")
+            print(f"Relevant Docs: {relevant_docs}")
+            print(f"Retrieved Docs: {retrieved_docs}")
+            print(f"Recall@1: {recall_at_1:.2f}\n")
         recall_percentage = recall_score / len(self.data) * 100
         return recall_percentage
     
