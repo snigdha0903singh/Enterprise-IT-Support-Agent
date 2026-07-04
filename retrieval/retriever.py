@@ -8,6 +8,8 @@ from qdrant_client import QdrantClient
 
 from ingestion.build_vectorstore import COLLECTION_NAME
 from ingestion.embed_documents import DEFAULT_EMBEDDING_MODEL
+from ingestion.load_documents import load_all_documents
+from ingestion.metadata_builder import add_metadata_to_documents
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -78,6 +80,7 @@ class SimpleQdrantRetriever:
         collection_name: str = COLLECTION_NAME,
         k: int = 5,
         candidate_k: int = 50,
+        expand_source_documents: bool = True,
         query_instruction: str = BGE_QUERY_INSTRUCTION,
     ) -> None:
         self.client = client
@@ -85,8 +88,10 @@ class SimpleQdrantRetriever:
         self.collection_name = collection_name
         self.k = k
         self.candidate_k = candidate_k
+        self.expand_source_documents = expand_source_documents
         self.query_instruction = query_instruction
         self._payload_documents: list[Document] | None = None
+        self._source_documents: dict[str, Document] | None = None
 
     def _document_from_point(self, point, score: float | None = None) -> Document:
         payload = point.payload or {}
@@ -120,6 +125,37 @@ class SimpleQdrantRetriever:
 
         self._payload_documents = documents
         return documents
+
+    def _load_source_documents(self) -> dict[str, Document]:
+        if self._source_documents is not None:
+            return self._source_documents
+
+        documents = add_metadata_to_documents(load_all_documents())
+        self._source_documents = {
+            document.metadata["source"]: document
+            for document in documents
+            if document.metadata.get("source")
+        }
+        return self._source_documents
+
+    def _expand_to_source_document(self, document: Document) -> Document:
+        source = document.metadata.get("source")
+        if not source:
+            return document
+
+        source_document = self._load_source_documents().get(source)
+        if source_document is None:
+            return document
+
+        return Document(
+            page_content=source_document.page_content,
+            metadata={
+                **source_document.metadata,
+                "_retrieved_chunk": document.page_content,
+                "_retrieved_chunk_index": document.metadata.get("chunk_index"),
+                "_score": document.metadata.get("_score"),
+            },
+        )
 
     def _lexical_score(self, query: str, document: Document) -> float:
         query_lower = query.lower()
@@ -192,12 +228,17 @@ class SimpleQdrantRetriever:
             key=lambda item: item[0],
             reverse=True,
         )
-        return [document for _, document in ranked_documents[: self.k]]
+        documents = [document for _, document in ranked_documents[: self.k]]
+        if not self.expand_source_documents:
+            return documents
+
+        return [self._expand_to_source_document(document) for document in documents]
 
 
 def get_retriever(
     collection_name: str = COLLECTION_NAME,
     k: int = 5,
+    expand_source_documents: bool = True,
     url: str | None = None,
     path: str | Path | None = DEFAULT_QDRANT_PATH,
 ):
@@ -210,4 +251,5 @@ def get_retriever(
         embeddings=get_embeddings(),
         collection_name=collection_name,
         k=k,
+        expand_source_documents=expand_source_documents,
     )
