@@ -9,8 +9,8 @@ with DATA_PATH.open("r", encoding="utf-8") as file:
     data = json.load(file)
 
 class Evaluators:
-    def __init__(self, data):
-        self.data = data
+    def __init__(self, dataset=None):
+        self.data = dataset or data
         self.retriever = get_retriever()
 
     def get_retrieved_doc_sources(self, query: str) -> tuple[list[str], dict[str, int]]:
@@ -118,4 +118,16 @@ class Evaluators:
             print(f"MRR: {reciprocal_rank:.2f}\n")
 
         return mrr_score / len(self.data) * 100
+    
+    def evaluate(self):
+        recall_at_5_percentage = self.get_recall_percentage()
+        recall_at_1_percentage = self.get_recall_at_1_percentage()
+        mrr_percentage = self.get_mrr_percentage()
+
+        print(f"Recall@5: {recall_at_5_percentage:.2f}%")
+        print(f"Recall@1: {recall_at_1_percentage:.2f}%")
+        print(f"MRR: {mrr_percentage:.2f}%")
+
+    def close(self):
+        self.retriever.client.close()
     
