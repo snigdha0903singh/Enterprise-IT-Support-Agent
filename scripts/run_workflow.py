@@ -22,4 +22,4 @@ result = run(
     tool_descriptions=TOOL_DEFINITIONS,
 )
 
-print(result)
+# print(result)

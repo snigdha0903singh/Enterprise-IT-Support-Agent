@@ -10,46 +10,20 @@ from ingestion.build_vectorstore import COLLECTION_NAME
 from ingestion.embed_documents import DEFAULT_EMBEDDING_MODEL
 from ingestion.load_documents import load_all_documents
 from ingestion.metadata_builder import add_metadata_to_documents
+from retrieval.query_transform.vanilla_rag import VanillaTransformer
+from constants.constant import (
+    BGE_QUERY_INSTRUCTION,
+    STOPWORDS,
+    NAME_METADATA_FIELDS,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_QDRANT_PATH = REPO_ROOT / "vectorstore" / "qdrant"
-BGE_QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
 IDENTIFIER_PATTERN = re.compile(r"\b(?:ACP|SEC|EMP|KB|INC|SYS|PRJ)-\d{4,5}\b", re.IGNORECASE)
 TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
-STOPWORDS = {
-    "a",
-    "an",
-    "and",
-    "are",
-    "article",
-    "by",
-    "does",
-    "for",
-    "guide",
-    "how",
-    "in",
-    "is",
-    "of",
-    "on",
-    "policy",
-    "project",
-    "system",
-    "the",
-    "to",
-    "under",
-    "what",
-    "which",
-    "who",
-}
-NAME_METADATA_FIELDS = (
-    "employee_name",
-    "project_name",
-    "policy_name",
-    "system_name",
-    "article_name",
-    "guide_name",
-)
+transformer=VanillaTransformer()
+
 
 
 def get_embeddings() -> HuggingFaceEmbeddings:
@@ -191,49 +165,88 @@ class SimpleQdrantRetriever:
         return score
 
     def invoke(self, query: str) -> list[Document]:
-        embedded_query = f"{self.query_instruction}{query}" if self.query_instruction else query
-        query_vector = self.embeddings.embed_query(embedded_query)
-        results = self.client.query_points(
-            collection_name=self.collection_name,
-            query=query_vector,
-            limit=max(self.k, self.candidate_k),
-            with_payload=True,
-            with_vectors=False,
-        )
 
+        retrieval_query = transformer.transform(query)
+
+        # Collect candidates from all search queries
         scored_by_source = {}
-        for point in results.points:
-            document = self._document_from_point(point, score=point.score)
-            source = document.metadata.get("source") or document.metadata.get("_id")
-            lexical_score = self._lexical_score(query, document)
-            combined_score = float(point.score) + lexical_score
-            existing = scored_by_source.get(source)
-            if existing is None or combined_score > existing[0]:
-                scored_by_source[source] = (combined_score, document)
 
+        for search_query in retrieval_query.search_queries:
+
+            query_vector = self.embeddings.embed_query(search_query)
+
+            results = self.client.query_points(
+                collection_name=self.collection_name,
+                query=query_vector,
+                limit=max(self.k, self.candidate_k),
+                with_payload=True,
+                with_vectors=False,
+            )
+
+            for point in results.points:
+
+                document = self._document_from_point(point, score=point.score)
+
+                source = document.metadata.get("source") or document.metadata.get("_id")
+
+                lexical_score = self._lexical_score(
+                    retrieval_query.original_query,
+                    document,
+                )
+
+                combined_score = float(point.score) + lexical_score
+
+                existing = scored_by_source.get(source)
+
+                if existing is None or combined_score > existing[0]:
+                    scored_by_source[source] = (
+                        combined_score,
+                        document,
+                    )
+
+        # Run lexical search once over the payload documents
         for document in self._load_payload_documents():
-            lexical_score = self._lexical_score(query, document)
+
+            lexical_score = self._lexical_score(
+                retrieval_query.original_query,
+                document,
+            )
+
             if lexical_score <= 0:
                 continue
 
             source = document.metadata.get("source") or document.metadata.get("_id")
+
             combined_score = lexical_score
+
             document.metadata["_score"] = combined_score
+
             existing = scored_by_source.get(source)
+
             if existing is None or combined_score > existing[0]:
-                scored_by_source[source] = (combined_score, document)
+                scored_by_source[source] = (
+                    combined_score,
+                    document,
+                )
 
         ranked_documents = sorted(
             scored_by_source.values(),
             key=lambda item: item[0],
             reverse=True,
         )
-        documents = [document for _, document in ranked_documents[: self.k]]
+
+        documents = [
+            document
+            for _, document in ranked_documents[: self.k]
+        ]
+
         if not self.expand_source_documents:
             return documents
 
-        return [self._expand_to_source_document(document) for document in documents]
-
+        return [
+            self._expand_to_source_document(document)
+            for document in documents
+        ]
 
 def get_retriever(
     collection_name: str = COLLECTION_NAME,
