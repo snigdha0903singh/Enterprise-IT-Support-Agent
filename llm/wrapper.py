@@ -87,7 +87,7 @@ class OpenRouterWrapper:
         )
 
         message = response.choices[0].message
-        print(f"Model response: {message.content}")
+        # print(f"Model response complete: {message}")
         if message.content is None:
              raise ValueError(
                   "Model returned no content."

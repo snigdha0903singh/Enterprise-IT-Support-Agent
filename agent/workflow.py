@@ -7,8 +7,12 @@ from agent.executor import ToolRegistry, execute
 from agent.planner import AgentDecision, PlannerLLM, plan
 
 from llm.wrapper import OpenRouterWrapper
-
-llm = OpenRouterWrapper()
+from dotenv import load_dotenv
+import os
+load_dotenv()
+model=os.getenv("PLANNER_MODEL", "qwen/qwen3-32b")
+tokens=int(os.getenv("PLANNER_MAX_TOKENS", "1024"))
+llm = OpenRouterWrapper(model=model, tokens=tokens)
 
 
 @dataclass(frozen=True)

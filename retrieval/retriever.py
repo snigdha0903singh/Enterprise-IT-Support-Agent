@@ -10,7 +10,7 @@ from ingestion.build_vectorstore import COLLECTION_NAME
 from ingestion.embed_documents import DEFAULT_EMBEDDING_MODEL
 from ingestion.load_documents import load_all_documents
 from ingestion.metadata_builder import add_metadata_to_documents
-from retrieval.query_transform.vanilla_rag import VanillaTransformer
+from retrieval.query_transform.hyde import HyDETransformer
 from constants.constant import (
     BGE_QUERY_INSTRUCTION,
     STOPWORDS,
@@ -22,7 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_QDRANT_PATH = REPO_ROOT / "vectorstore" / "qdrant"
 IDENTIFIER_PATTERN = re.compile(r"\b(?:ACP|SEC|EMP|KB|INC|SYS|PRJ)-\d{4,5}\b", re.IGNORECASE)
 TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
-transformer=VanillaTransformer()
+transformer=HyDETransformer()
 
 
 

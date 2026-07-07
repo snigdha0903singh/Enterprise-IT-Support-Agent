@@ -12,7 +12,12 @@ from retrieval.retriever import get_retriever
 
 retriever = get_retriever()
 from llm.wrapper import OpenRouterWrapper
-llm = OpenRouterWrapper()
+from dotenv import load_dotenv
+import os
+load_dotenv()
+model=os.getenv("PLANNER_MODEL", "qwen/qwen3-32b")
+tokens=int(os.getenv("PLANNER_MAX_TOKENS", "1024"))
+llm = OpenRouterWrapper(model=model, tokens=tokens)
 
 result = run(
     query="Give Priya Nair access to Polaris Reporting.",
@@ -22,4 +27,6 @@ result = run(
     tool_descriptions=TOOL_DEFINITIONS,
 )
 
-# print(result)
+print("Agent result:", result.decision)
+print("Tool output:", result.tool_output)
+print("Final answer:", result.answer)
