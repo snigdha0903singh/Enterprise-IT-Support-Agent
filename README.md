@@ -1,33 +1,45 @@
-##Enterprise IT Support Agent##
-Overview
+# Enterprise IT Support Agent
 
-Enterprise IT Support Agent is an Agentic Retrieval-Augmented Generation (RAG) system designed to answer enterprise IT support requests using organization-specific knowledge while autonomously selecting and executing appropriate enterprise tools.
+An **Agentic Retrieval-Augmented Generation (RAG)** system that answers enterprise IT support requests using organization-specific knowledge, while autonomously selecting and executing the appropriate enterprise tools.
 
-The project is built to evaluate how different query transformation strategies influence both:
+---
 
-Retrieval quality
-Downstream agent decision making
+## 📌 Overview
 
-Instead of comparing different retrieval architectures, the project keeps the retrieval pipeline, reranking strategy, planner, tools, and evaluation framework identical while varying only the query transformation technique.
+This project investigates how different **query transformation strategies** affect:
 
-Problem Statement
+- **Retrieval quality** — how well the right documents are found
+- **Downstream agent decision-making** — how well the agent selects and executes the correct tool
+
+Rather than comparing different retrieval *architectures*, the project holds the retrieval pipeline, reranking strategy, planner, tools, and evaluation framework **constant**, varying only the **query transformation technique**.
+
+---
+
+## ❓ Problem Statement
 
 Traditional enterprise chatbots often struggle with:
 
-retrieving the correct document
-handling ambiguous enterprise terminology
-understanding policy identifiers
-selecting the correct enterprise action
+- Retrieving the correct document
+- Handling ambiguous enterprise terminology
+- Understanding policy identifiers
+- Selecting the correct enterprise action
 
-This project investigates whether improving the retrieval query itself leads to better downstream agent performance.
+This project investigates whether **improving the retrieval query itself** leads to better downstream agent performance.
 
-The system therefore evaluates four RAG pipelines:
+Four RAG pipelines are evaluated:
 
-Vanilla RAG
-HyDE RAG
-Query Rewrite RAG
-Multi-Query RAG
-Repository Structure
+| Pipeline | Description |
+|---|---|
+| **Vanilla RAG** | Uses the original user query directly |
+| **HyDE RAG** | Uses an LLM-generated hypothetical passage for retrieval |
+| **Query Rewrite RAG** | Uses an LLM to rewrite the query into a clearer enterprise search query |
+| **Multi-Query RAG** | Generates multiple queries representing different retrieval perspectives |
+
+---
+
+## 🗂️ Repository Structure
+
+```
 Enterprise-IT-Support-Agent
 │
 ├── agent/
@@ -63,13 +75,16 @@ Enterprise-IT-Support-Agent
 │       └── model.py
 │
 ├── tools/
-│
 ├── evaluation/
-│
 ├── vectorstore/
-│
 └── scripts/
-Project Workflow
+```
+
+---
+
+## 🔄 Project Workflow
+
+```
 User Query
       │
       ▼
@@ -99,196 +114,197 @@ Tool Execution
       │
       ▼
 Final Response
-Query Transformation Strategies
+```
 
-The project evaluates four retrieval pipelines.
+---
 
-1. Vanilla RAG
+## 🔍 Query Transformation Strategies
 
-Uses the original user query directly.
+### 1. Vanilla RAG
+Uses the original user query directly, embedded with the BGE retrieval instruction.
 
-Example
-
+**Example**
+```
 Give Priya Nair access to Polaris Reporting.
+```
 
-The original query is embedded using the BGE retrieval instruction.
+### 2. HyDE RAG
+Uses an LLM to generate a semantic search representation ("hypothetical document") of the user's request. The generated passage is embedded instead of the original query.
 
-2. HyDE RAG
-
-Uses an LLM to generate a semantic search representation of the user's request.
-
-The generated semantic passage is embedded instead of the original query.
-
-Example
-
+**Example**
+```
 Employee Priya Nair requesting access to Polaris Reporting.
-Relevant concepts include authorization,
-enterprise permissions,
-access policies,
-security policies,
-identity management,
+Relevant concepts include authorization, enterprise permissions,
+access policies, security policies, identity management,
 knowledge base procedures.
-3. Query Rewrite
+```
 
+### 3. Query Rewrite
 Uses an LLM to rewrite the user query into a clearer enterprise search query.
 
-Example
-
+**Example**
+```
 Request access for Priya Nair to the Polaris Reporting system.
-4. Multi Query
+```
 
-Generates multiple retrieval queries representing different retrieval perspectives.
+### 4. Multi-Query
+Generates multiple retrieval queries representing different retrieval perspectives. Each is independently embedded and retrieved, then merged before reranking.
 
-Example
-
+**Example**
+```
 Request access for Priya Nair to Polaris Reporting.
-
 Grant enterprise access to Polaris Reporting.
-
 Find enterprise access policies for Polaris Reporting.
-
 Retrieve documentation describing Polaris Reporting access procedures.
+```
 
-Each query is independently embedded and retrieved.
+---
 
-The retriever merges the candidates before reranking.
+## 🧱 Retrieval Pipeline
 
-Retrieval Pipeline
+The retrieval architecture remains **identical** across all pipelines.
 
-The retrieval architecture remains identical across all pipelines.
+| Component | Details |
+|---|---|
+| **Embedding Model** | `BAAI/bge-large-en-v1.5` (BGE retrieval instruction used for query embeddings) |
+| **Vector Database** | Qdrant |
+| **Retrieval** | Top 50 vector candidates retrieved |
+| **Hybrid Reranking** | Lexical score added on top of vector similarity |
 
-Embedding Model
-BAAI/bge-large-en-v1.5
+**Final ranking score:**
 
-Query embeddings use the BGE retrieval instruction.
+```
+Final Score = Vector Similarity + Lexical Score
+```
 
-Vector Database
-Qdrant
-Retrieval
+The lexical score is based on:
+- Enterprise identifiers
+- Metadata matches
+- Keyword overlap
 
-Top 50 vector candidates are retrieved.
+This improves retrieval for enterprise entities such as:
+- EMP IDs
+- Project IDs
+- KB IDs
+- Policy IDs
+- Incident IDs
 
-Hybrid Reranking
+---
 
-Each candidate receives an additional lexical score based on:
+## 🤖 Agent Workflow
 
-enterprise identifiers
-metadata matches
-keyword overlap
+The retrieved context is passed to the **planning agent**, which reasons over:
 
-The final ranking score is
+- The user request
+- The retrieved context
+- Available tools
 
-Vector Similarity
-+
-Lexical Score
+The planner returns a structured decision:
 
-This improves retrieval for enterprise entities such as
-
-EMP IDs
-Project IDs
-KB IDs
-Policy IDs
-Incident IDs
-Agent Workflow
-
-The retrieved context is passed to the planning agent.
-
-The planner reasons over
-
-user request
-retrieved context
-available tools
-
-The planner returns
-
+```json
 {
     "tool": "...",
     "arguments": {},
     "confidence": 0.95
 }
+```
 
 The selected tool is then executed.
 
-Enterprise Tools
+---
 
-The project currently simulates enterprise operations such as
+## 🛠️ Enterprise Tools
 
-Access Requests
-Incident Management
-Project Operations
-Knowledge Base Lookup
-Policy Lookup
+The project currently simulates enterprise operations such as:
 
-The tool registry is intentionally modular to allow additional enterprise tools to be added without changing the planner.
+- Access Requests
+- Incident Management
+- Project Operations
+- Knowledge Base Lookup
+- Policy Lookup
 
-Evaluation
+The tool registry is intentionally modular, allowing new enterprise tools to be added without changing the planner.
 
-The project evaluates both retrieval quality and agent performance.
+---
 
-Retrieval Metrics
-Recall@1
-Recall@5
-Mean Reciprocal Rank (MRR)
-Agent Metrics
-Tool Selection Accuracy
-Argument Extraction Accuracy
-Execution Success Rate
-Hallucination Rate
-Experimental Design
+## 📊 Evaluation
 
-Only the query transformation strategy changes between experiments.
+The project evaluates both **retrieval quality** and **agent performance**.
 
-The following components remain identical across all pipelines:
+**Retrieval Metrics**
+- Recall@1
+- Recall@5
+- Mean Reciprocal Rank (MRR)
 
-Enterprise Dataset
-Chunking Strategy
-Metadata Extraction
-Embedding Model
-Vector Store
-Hybrid Reranker
-Planner Agent
-Tool Registry
-Evaluation Dataset
+**Agent Metrics**
+- Tool Selection Accuracy
+- Argument Extraction Accuracy
+- Execution Success Rate
+- Hallucination Rate
 
-This enables a controlled comparison of the effect of query transformation on retrieval and agent performance.
+---
 
-Available Branches
+## 🧪 Experimental Design
 
-The repository currently maintains separate branches for each query transformation strategy to simplify experimentation.
+Only the **query transformation strategy** changes between experiments. The following components remain identical across all pipelines:
 
-Branch	Description
-vanilla-rag	Original user query used directly for retrieval
-hyde-rag	HyDE-based semantic query generation
-query-rewrite	LLM-based query rewriting
-multi-query	Multiple retrieval queries generated from a single user query
+- Enterprise Dataset
+- Chunking Strategy
+- Metadata Extraction
+- Embedding Model
+- Vector Store
+- Hybrid Reranker
+- Planner Agent
+- Tool Registry
+- Evaluation Dataset
 
-The implementation across these branches is intentionally identical except for the query transformation module imported by the retriever. Once experimentation is complete, the branches will be merged into a unified implementation where the query transformation strategy can be selected through configuration.
+This enables a **controlled comparison** of the effect of query transformation on retrieval and agent performance.
 
-Future Work
+---
 
-Potential future enhancements include:
+## 🌿 Available Branches
 
-Reciprocal Rank Fusion (RRF) for Multi-Query retrieval
-BM25 integration
-Cross-encoder reranking
-LangSmith experiment tracking
-Tool execution against real enterprise services
-Multi-agent planning
-Online evaluation using user feedback
-Hybrid sparse+dense retrieval
-Technologies Used
-Retrieval
-Qdrant
-HuggingFace Embeddings
-BGE Large v1.5
-LLMs
-Qwen 3 32B (Planner)
-GPT-4o Mini (Query Transformation)
-Framework
-Python
-LangChain Document API
-Evaluation
-Recall@1
-Recall@5
-MRR
-Custom Agent Evaluation Framework
+The repository maintains separate branches for each query transformation strategy to simplify experimentation.
+
+| Branch | Description |
+|---|---|
+| `vanilla-rag` | Original user query used directly for retrieval |
+| `hyde-rag` | HyDE-based semantic query generation |
+| `query-rewrite` | LLM-based query rewriting |
+| `multi-query` | Multiple retrieval queries generated from a single user query |
+
+The implementation across these branches is intentionally identical except for the query transformation module imported by the retriever. Once experimentation is complete, the branches will be merged into a unified implementation where the strategy can be selected via configuration.
+
+---
+
+## 🚀 Future Work
+
+- Reciprocal Rank Fusion (RRF) for Multi-Query retrieval
+- BM25 integration
+- Cross-encoder reranking
+- LangSmith experiment tracking
+- Tool execution against real enterprise services
+- Multi-agent planning
+- Online evaluation using user feedback
+- Hybrid sparse + dense retrieval
+
+---
+
+## 🧰 Technologies Used
+
+**Retrieval**
+- Qdrant
+- HuggingFace Embeddings
+- BGE Large v1.5
+
+**LLMs**
+- Qwen 3 32B (Planner)
+- GPT-4o Mini (Query Transformation)
+
+**Framework**
+- Python
+- LangChain Document API
+
+**Evaluation**
+- Recall@1, Recall@5, MRR
+- Custom Agent Evaluation Framework
