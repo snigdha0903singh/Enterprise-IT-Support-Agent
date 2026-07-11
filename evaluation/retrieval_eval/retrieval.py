@@ -3,7 +3,7 @@ from pathlib import Path
 
 from retrieval.retriever import get_retriever
 
-DATA_PATH = Path(__file__).resolve().parents[1] / "dataset" / "retrieval_benchmarking" / "data.json"
+DATA_PATH = Path(__file__).resolve().parents[1] / "dataset" / "retrieval_benchmarking" / "ground_truth_dataset.json"
 
 with DATA_PATH.open("r", encoding="utf-8") as file:
     data = json.load(file)
