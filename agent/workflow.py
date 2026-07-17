@@ -5,14 +5,10 @@ from typing import Any, Callable
 
 from agent.executor import ToolRegistry, execute
 from agent.planner import AgentDecision, PlannerLLM, plan
-
-from llm.wrapper import OpenRouterWrapper
-from dotenv import load_dotenv
-import os
-load_dotenv()
-model=os.getenv("PLANNER_MODEL", "qwen/qwen3-32b")
-tokens=int(os.getenv("PLANNER_MAX_TOKENS", "1024"))
-llm = OpenRouterWrapper(model=model, tokens=tokens)
+import json
+from pathlib import Path
+CACHE_FILE = Path("cache/agent_vanila_rag_runs.json")
+CACHE_FILE.parent.mkdir(exist_ok=True)
 
 
 @dataclass(frozen=True)
@@ -27,7 +23,6 @@ class AgentRun:
 def run(
     query: str,
     retriever: Any,
-    llm: PlannerLLM | Callable[[str], Any],
     tools: ToolRegistry,
     tool_descriptions: Any | None = None,
 ) -> AgentRun:
@@ -40,10 +35,44 @@ def run(
         query=query,
         retrieved_context=context,
         available_tools=tool_descriptions or tools,
-        llm=llm,
     )
     tool_output = execute(decision, tools)
     answer = build_answer(decision, tool_output)
+
+    # ------------------ Cache Agent Run ------------------
+
+    if CACHE_FILE.exists():
+        with CACHE_FILE.open("r", encoding="utf-8") as f:
+            cache = json.load(f)
+    else:
+        cache = {}
+
+    cache[query] = {
+        "context": (
+            context
+            if isinstance(context, str)
+            else [
+                {
+                    "page_content": doc.page_content,
+                    "metadata": doc.metadata,
+                }
+                for doc in context
+            ]
+        ),
+        "decision": {
+            "reasoning": decision.reasoning,
+            "tool": decision.tool,
+            "arguments": decision.arguments,
+            "confidence": decision.confidence,
+        },
+        "tool_output": tool_output,
+        "answer": answer,
+    }
+
+    with CACHE_FILE.open("w", encoding="utf-8") as f:
+        json.dump(cache, f, indent=2)
+
+    # ---------------------------------- Cache Agent Run -------------------
 
     return AgentRun(
         query=query,
