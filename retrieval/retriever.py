@@ -54,7 +54,7 @@ class SimpleQdrantRetriever:
         collection_name: str = COLLECTION_NAME,
         k: int = 5,
         candidate_k: int = 50,
-        expand_source_documents: bool = True,
+        expand_source_documents: bool = False,
         query_instruction: str = BGE_QUERY_INSTRUCTION,
     ) -> None:
         self.client = client
@@ -251,7 +251,7 @@ class SimpleQdrantRetriever:
 def get_retriever(
     collection_name: str = COLLECTION_NAME,
     k: int = 5,
-    expand_source_documents: bool = True,
+    expand_source_documents: bool = False,
     url: str | None = None,
     path: str | Path | None = DEFAULT_QDRANT_PATH,
 ):
