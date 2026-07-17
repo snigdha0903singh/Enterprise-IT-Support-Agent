@@ -5,6 +5,18 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
 from agent.prompts import PLANNER_PROMPT
+from llm.wrapper import OpenRouterWrapper
+from dotenv import load_dotenv
+import os
+import re
+load_dotenv()
+model=os.getenv("PLANNER_MODEL")
+tokens=int(os.getenv("PLANNER_MAX_TOKENS"))
+# base_url=os.getenv("OPENROUTER_BASE_URL")
+# api_key=os.getenv("OPENROUTER_API_KEY")
+base_url=os.getenv("LOCAL_MODEL_BASE_URL")
+api_key=os.getenv("LOCAL_MODEL_API_KEY")
+llm = OpenRouterWrapper(model=model, tokens=tokens, api_key=api_key, base_url=base_url)
 
 
 class PlannerLLM(Protocol):
@@ -35,7 +47,6 @@ def plan(
     query: str,
     retrieved_context: str | list[Any],
     available_tools: dict[str, Callable[..., Any]] | list[str] | tuple[str, ...],
-    llm: PlannerLLM | Callable[[str], Any],
 ) -> AgentDecision:
     """
     Ask the LLM to choose the next tool call.
@@ -49,6 +60,7 @@ def plan(
         tools=_format_tools(available_tools),
     )
     raw_response = _invoke_llm(llm, prompt)
+    print(f"model used for planning: {llm.model}")
     return AgentDecision.from_dict(_parse_json_response(raw_response))
 
 
@@ -60,17 +72,37 @@ def _invoke_llm(llm: PlannerLLM | Callable[[str], Any], prompt: str) -> Any:
 
 def _parse_json_response(response: Any) -> dict[str, Any]:
     text = getattr(response, "content", response)
+
     if not isinstance(text, str):
         text = str(text)
 
     text = text.strip()
+
+    # Remove markdown code fences
     if text.startswith("```"):
         text = _strip_code_fence(text)
 
+    # Remove // comments
+    text = re.sub(r"//.*", "", text)
+
+    # Remove trailing commas before } or ]
+    text = re.sub(r",\s*([}\]])", r"\1", text)
+
+    text = text.strip()
+
     try:
         parsed = json.loads(text)
+        tool = parsed.get("tool")
+        if isinstance(tool, str):
+            tool = tool.strip()
+            if tool.lower() in {"null", "none", ""}:
+                parsed["tool"] = None
+            else:
+                parsed["tool"] = tool
     except json.JSONDecodeError as exc:
-        raise ValueError(f"Planner response was not valid JSON: {text}") from exc
+        raise ValueError(
+            f"Planner response was not valid JSON:\n{text}"
+        ) from exc
 
     if not isinstance(parsed, dict):
         raise ValueError("Planner response must be a JSON object.")
@@ -79,12 +111,21 @@ def _parse_json_response(response: Any) -> dict[str, Any]:
 
 
 def _strip_code_fence(text: str) -> str:
-    lines = text.splitlines()
-    if lines and lines[0].startswith("```"):
+    text = text.strip()
+
+    if text.startswith("```"):
+        lines = text.splitlines()
+
+        # Remove opening fence (``` or ```json)
         lines = lines[1:]
-    if lines and lines[-1].strip() == "```":
-        lines = lines[:-1]
-    return "\n".join(lines).strip()
+
+        # Remove closing fence
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+
+        text = "\n".join(lines)
+
+    return text.strip()
 
 
 def _format_context(retrieved_context: str | list[Any]) -> str:

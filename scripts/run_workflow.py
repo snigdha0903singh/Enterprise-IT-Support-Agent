@@ -11,13 +11,12 @@ from tools.tools import TOOLS, TOOL_DEFINITIONS
 from retrieval.retriever import get_retriever
 
 retriever = get_retriever()
-from llm.wrapper import OpenRouterWrapper
-llm = OpenRouterWrapper()
+# from llm.wrapper import OpenRouterWrapper
+# llm = OpenRouterWrapper()
 
 result = run(
     query="Give Priya Nair access to Polaris Reporting.",
     retriever=retriever,
-    llm=llm,
     tools=TOOLS,
     tool_descriptions=TOOL_DEFINITIONS,
 )
