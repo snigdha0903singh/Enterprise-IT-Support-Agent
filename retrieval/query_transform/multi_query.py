@@ -1,5 +1,3 @@
-<<<<<<< Updated upstream
-=======
 from retrieval.query_transform.model import RetrievalQuery
 from constants.constant import BGE_QUERY_INSTRUCTION,MULTI_QUERY_PROMPT
 from llm.wrapper import OpenRouterWrapper
@@ -38,4 +36,3 @@ class MultiQueryTransformer:
             original_query=query,
             search_queries=queries,
         )
->>>>>>> Stashed changes
